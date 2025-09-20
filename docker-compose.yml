@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  saga-tracker:
+    build: .
+    ports:
+      - "5010:5010"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/saga_db
+      - PULSAR_SERVICE_URL=pulsar://pulsar:6650
+      - PULSAR_ADMIN_URL=http://pulsar:8080
+      - SUBSCRIPTION_NAME=saga-tracker
+      - TOPICS=persistent://content-management/events/content-events,persistent://loyalty-management/events/loyalty-events,persistent://campaign-management/events/campaign-events,persistent://partner-lifecycle/events/partner-events
+      - FLASK_ENV=development
+    depends_on:
+      - postgres
+      - pulsar
+    volumes:
+      - ./src:/app/src
+    networks:
+      - saga-tracker-network
+  
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=saga_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - saga-tracker-network
+  
+  pulsar:
+    image: apachepulsar/pulsar:3.1.0
+    command: bin/pulsar standalone --no-functions-worker --no-stream-storage
+    ports:
+      - "6654:6650"
+      - "8084:8080"
+    environment:
+      - PULSAR_MEM=-Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g
+    volumes:
+      - pulsar_data:/pulsar/data
+    networks:
+      - saga-tracker-network
+
+volumes:
+  postgres_data:
+  pulsar_data:
+
+networks:
+  saga-tracker-network:
+    driver: bridge
