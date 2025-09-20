@@ -78,7 +78,7 @@ class SagaTrackerService:
             except Exception:
                 ts_event = datetime.utcnow()
             step_status = headers.get('status', 'Success' if 'failed' not in event_type else 'Failed')
-            business_key = payload.get('payload', {}).get('id')
+            business_key = event_id#payload.get('payload', {}).get('id')
             saga_type = event_type
 
             with self.app.app_context():
