@@ -2,21 +2,28 @@ import logging, os, threading, time
 from flask import Flask, jsonify, request
 from saga_tracker.config.db import init_db, db
 from saga_tracker.infraestructura.tracker_service import SagaTrackerService
-from saga_tracker.models.saga_models import SagaInstance, SagaStep
+# REMOVE these imports from the top level
+# from saga_tracker.models.saga_models import SagaInstance, SagaStep
 from sqlalchemy import select
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def create_app():
     app = Flask(__name__)
     database_url = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/saga_db')
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+    # Initialize db FIRST
+    init_db(app)
+    # NOW import models after db is initialized with app
+    from saga_tracker.models.saga_models import SagaInstance, SagaStep
     @app.get("/health")
     def health():
         return jsonify(status="ok"), 200
+    
 
     @app.get("/sagas/<string:saga_id>")
     def get_saga(saga_id):
@@ -77,10 +84,10 @@ def create_app():
             } for s in steps]
             result["pagination"] = {"limit": limit, "offset": offset, "returned": len(steps)}
         return jsonify(result), 200
-    init_db(app)
+    
     tracker = SagaTrackerService(app)
     tracker.start()
-   
+
     def bg_loop():
         while True:
             try:
@@ -95,6 +102,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5010")), debug=True)
-    
