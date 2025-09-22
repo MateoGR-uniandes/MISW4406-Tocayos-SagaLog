@@ -1,5 +1,6 @@
 import json, logging
 from datetime import datetime
+import uuid
 from saga_tracker.infraestructura.pulsar_consumer  import PulsarConfig, PulsarConsumers
 from saga_tracker.config.db import db
 from models.saga_models import SagaInstance, SagaStep
@@ -68,7 +69,7 @@ class SagaTrackerService:
             payload = json.loads(msg.data())
             headers = payload
             saga_id = headers.get('saga_id') or headers.get('correlation_id') or 'unknown'
-            event_id = headers.get('event_id') or f"evt-{msg.message_id()}"
+            event_id = headers.get('event_id') or uuid.uuid4()
             event_type = headers.get('event_type', 'unknown')
             event_data = headers.get('event_data', 'unknown')
             service = headers.get('service', 'unknown')
