@@ -126,8 +126,8 @@ class SagaTrackerService:
                     "businessKey": inst.business_key,
                     "type": inst.type,
                     "status": inst.status,
-                    "startedAt": inst.started_at.isoformat() if inst.started_at else None,
-                    "updatedAt": inst.updated_at.isoformat() if inst.updated_at else None,
+                    "startedAt": inst.started_at,
+                    "updatedAt": inst.updated_at,
                     "lastEventId": inst.last_event_id,
                     "retriesTotal": inst.retries_total,
                 }
@@ -154,8 +154,8 @@ class SagaTrackerService:
                     "payload": s.payload,
                     "errorCode": s.error_code,
                     "errorMsg": s.error_msg,
-                    "tsEvent": s.ts_event.isoformat() if s.ts_event else None,
-                    "tsIngested": s.ts_ingested.isoformat() if s.ts_ingested else None,
+                    "tsEvent": s.ts_event if s.ts_event else None,
+                    "tsIngested": s.ts_ingested if s.ts_ingested else None,
                 } for s in steps]
                 result["pagination"] = {"limit": limit, "offset": offset, "returned": len(steps)}
 
