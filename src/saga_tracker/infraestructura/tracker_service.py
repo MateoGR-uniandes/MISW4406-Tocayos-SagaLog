@@ -1,5 +1,6 @@
 import json, logging
 from datetime import datetime
+from typing import Any, Dict, Tuple
 import uuid
 from saga_tracker.infraestructura.pulsar_consumer  import PulsarConfig, PulsarConsumers
 from saga_tracker.config.db import db
@@ -109,6 +110,57 @@ class SagaTrackerService:
             logger.exception("Error procesando mensaje del SagaTracker: %s", e)
             # No ack
 
+    def get_by_saga_id(self, saga_id: str, include_steps: bool = True, limit: int = 100, offset: int = 0) -> Tuple[Dict[str, Any], int]:
+        """
+        Consulta la saga en BD y devuelve (payload_json, http_status).
+        Diseñado para ser llamado desde main.py en el endpoint HTTP.
+        """
+        with self.app.app_context():
+            inst = db.session.get(SagaInstance, saga_id)
+            if inst is None:
+                return {"error": "not_found", "sagaId": saga_id}, 404
+
+            result = {
+                "instance": {
+                    "sagaId": inst.saga_id,
+                    "businessKey": inst.business_key,
+                    "type": inst.type,
+                    "status": inst.status,
+                    "startedAt": inst.started_at.isoformat() if inst.started_at else None,
+                    "updatedAt": inst.updated_at.isoformat() if inst.updated_at else None,
+                    "lastEventId": inst.last_event_id,
+                    "retriesTotal": inst.retries_total,
+                }
+            }
+
+            if include_steps:
+                stmt = (
+                    select(SagaStep)
+                    .where(SagaStep.saga_id == saga_id)
+                    .order_by(SagaStep.seq.asc())
+                    .offset(offset)
+                    .limit(max(1, min(limit, 1000)))
+                )
+                steps = db.session.execute(stmt).scalars().all()
+                result["steps"] = [{
+                    "id": s.id,
+                    "seq": s.seq,
+                    "eventId": s.event_id,
+                    "causationId": s.causation_id,
+                    "topic": s.topic,
+                    "service": s.service,
+                    "eventType": s.step,
+                    "status": s.status,
+                    "payload": s.payload,
+                    "errorCode": s.error_code,
+                    "errorMsg": s.error_msg,
+                    "tsEvent": s.ts_event.isoformat() if s.ts_event else None,
+                    "tsIngested": s.ts_ingested.isoformat() if s.ts_ingested else None,
+                } for s in steps]
+                result["pagination"] = {"limit": limit, "offset": offset, "returned": len(steps)}
+
+            return result, 200
+        
 #
 # {
 # "event_type": "ProgramaLealtadRegistrado",
