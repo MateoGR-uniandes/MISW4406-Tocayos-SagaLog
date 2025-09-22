@@ -2,8 +2,6 @@ import logging, os, threading, time
 from flask import Flask, jsonify, request
 from saga_tracker.config.db import init_db, db
 from saga_tracker.infraestructura.tracker_service import SagaTrackerService
-# REMOVE these imports from the top level
-# from saga_tracker.models.saga_models import SagaInstance, SagaStep
 from sqlalchemy import select
 
 
@@ -16,15 +14,13 @@ def create_app():
     database_url = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/saga_db')
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    # Initialize db FIRST
+    
     init_db(app)
-    # NOW import models after db is initialized with app
-    from saga_tracker.models.saga_models import SagaInstance, SagaStep
+    
     @app.get("/health")
     def health():
         return jsonify(status="ok"), 200
     
-
     @app.get("/sagas/<string:saga_id>")
     def get_saga(saga_id):
         """
@@ -38,6 +34,7 @@ def create_app():
         """
         include_steps = (request.args.get("includeSteps", "true").lower() == "true")
         try:
+            from saga_tracker.models.saga_models import SagaInstance, SagaStep
             limit = int(request.args.get("limit", "100"))
             offset = int(request.args.get("offset", "0"))
             limit = max(1, min(limit, 1000))
@@ -98,6 +95,7 @@ def create_app():
 
     t = threading.Thread(target=bg_loop, daemon=True)
     t.start()
+
     return app
 
 if __name__ == "__main__":
