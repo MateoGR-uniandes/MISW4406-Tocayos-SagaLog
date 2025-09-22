@@ -54,9 +54,9 @@ class SagaTrackerService:
             db.session.commit()
 
     def _transition(self, step: str, step_status: str) -> str:
-        if step.endswith('completed') and step_status.lower() == 'success':
+        if step.endswith('Completed') and step_status.lower() == 'success':
             return 'Completed'
-        if step.endswith('failed'):
+        if step_status.lower() == 'failed':
             return 'Compensating'
         return 'InProgress'
 
